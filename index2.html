@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP Detective · Proxy & Country</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(145deg, #0b1120 0%, #192132 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+        }
+
+        .glass-panel {
+            background: rgba(18, 26, 40, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(74, 144, 226, 0.25);
+            border-radius: 2.5rem;
+            padding: 2.5rem 2rem;
+            max-width: 700px;
+            width: 100%;
+            box-shadow: 0 30px 50px -20px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(56, 189, 248, 0.1) inset;
+            transition: all 0.3s ease;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            background: linear-gradient(120deg, #e0f2fe, #bae6fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .subhead {
+            color: #7f8ea3;
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
+            border-left: 3px solid #3b82f6;
+            padding-left: 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 0 8px 8px 0;
+        }
+
+        .status-card {
+            background: #0f172a;
+            border-radius: 2rem;
+            padding: 2rem;
+            margin-bottom: 1.8rem;
+            border: 1px solid #1e2b45;
+            box-shadow: 0 20px 30px -15px #030712;
+        }
+
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.2rem;
+        }
+
+        .neon-spinner {
+            width: 56px;
+            height: 56px;
+            border: 4px solid rgba(56, 189, 248, 0.15);
+            border-top: 4px solid #38bdf8;
+            border-right: 4px solid #818cf8;
+            border-radius: 50%;
+            animation: spin 0.9s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite;
+            box-shadow: 0 0 15px #38bdf8;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .ip-badge {
+            background: #1a2538;
+            border-radius: 60px;
+            padding: 0.7rem 1.8rem;
+            display: inline-block;
+            margin-bottom: 1.2rem;
+            border: 1px solid #2d3f5c;
+            font-family: 'Fira Code', monospace;
+            font-size: 1.9rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            letter-spacing: 1px;
+            word-break: break-word;
+        }
+
+        .geo-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin: 1.5rem 0 1rem;
+        }
+
+        .flag {
+            font-size: 4rem;
+            line-height: 1;
+            filter: drop-shadow(0 8px 10px #00000040);
+            background: #0b1622;
+            padding: 0.5rem 1.2rem;
+            border-radius: 80px;
+            border: 1px solid #2e405f;
+        }
+
+        .country-name {
+            font-size: 2.2rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #ddd6fe, #a5f3fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .city-region {
+            color: #9aaec9;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            background: #0b1422;
+            padding: 0.4rem 1.5rem;
+            border-radius: 40px;
+            display: inline-block;
+            border: 1px solid #253751;
+        }
+
+        .proxy-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #1d2d44;
+            padding: 0.5rem 1.5rem;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 1px solid;
+            margin: 0.3rem;
+        }
+
+        .proxy-badge {
+            background: #312e44;
+            border-color: #7b6bba;
+            color: #c4b5fd;
+        }
+        .vpn-badge {
+            background: #2d3a4b;
+            border-color: #4b7b9c;
+            color: #9ac7ff;
+        }
+        .tor-badge {
+            background: #4a2e3a;
+            border-color: #b05e7a;
+            color: #fbc1d0;
+        }
+        .secure-badge {
+            background: #1f3b2c;
+            border-color: #4f9e6a;
+            color: #a3e9b4;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 14px;
+            margin: 2rem 0 1.2rem;
+            text-align: left;
+        }
+
+        .detail-item {
+            background: #0f1a2b;
+            padding: 0.9rem 1.2rem;
+            border-radius: 24px;
+            border: 1px solid #243652;
+            transition: 0.1s ease;
+        }
+        .detail-label {
+            color: #6d86a8;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 0.2rem;
+        }
+        .detail-value {
+            color: #e1eaf1;
+            font-size: 1.1rem;
+            font-weight: 600;
+            word-break: break-word;
+        }
+
+        .api-footer {
+            font-size: 0.75rem;
+            color: #5d718b;
+            margin-top: 1.2rem;
+            padding-top: 1rem;
+            border-top: 1px dashed #253758;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .refresh-btn {
+            background: #1e2b41;
+            border: 1px solid #376e9e;
+            color: #c9e2ff;
+            padding: 0.8rem 2.2rem;
+            border-radius: 40px;
+            font-weight: 500;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px #0a0f1c;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .refresh-btn:hover {
+            background: #25486b;
+            border-color: #5298d4;
+            color: white;
+            transform: scale(1.02);
+        }
+
+        .error-box {
+            background: #2f1c27;
+            border: 1px solid #be3c5c;
+            color: #ffb4b4;
+            padding: 1.5rem;
+            border-radius: 40px;
+            text-align: center;
+        }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="glass-panel">
+        <h1>
+            <span>🛡️ IP · PROXY · COUNTRY</span>
+        </h1>
+        <div class="subhead">Free IP geolocation & proxy detection — ipapi.is + fallbacks</div>
+
+        <div id="content">
+            <!-- loader -->
+            <div id="loading" class="status-card loading-container">
+                <div class="neon-spinner"></div>
+                <p style="color:#b9d2f0;"> contacting free APIs ...</p>
+                <small style="color:#6f88b0;">ipapi.is · ip-api.com · ipapi.co</small>
+            </div>
+
+            <!-- result panel -->
+            <div id="result" class="status-card hidden">
+                <div class="ip-badge" id="ipDisplay">—</div>
+
+                <div class="geo-row">
+                    <span class="flag" id="flagEmoji">🌐</span>
+                    <span class="country-name" id="countryDisplay">—</span>
+                </div>
+                <div class="city-region" id="cityDisplay"></div>
+
+                <!-- proxy / vpn / tor badges -->
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 25px;" id="proxyBadgeContainer">
+                    <!-- dynamically filled -->
+                </div>
+
+                <div class="details-grid" id="extraDetails">
+                    <!-- filled by js -->
+                </div>
+
+                <button class="refresh-btn" id="refreshBtn">
+                    🔄  Refresh data
+                </button>
+            </div>
+
+            <!-- error -->
+            <div id="error" class="status-card error-box hidden"></div>
+        </div>
+
+        <div class="api-footer">
+            <span>⚡ free tier · multiple sources [citation:1][citation:10]</span>
+            <span>🔎 proxy & VPN detection where available</span>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const loadingDiv = document.getElementById('loading');
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+
+            const ipEl = document.getElementById('ipDisplay');
+            const flagEl = document.getElementById('flagEmoji');
+            const countryEl = document.getElementById('countryDisplay');
+            const cityEl = document.getElementById('cityDisplay');
+            const badgeContainer = document.getElementById('proxyBadgeContainer');
+            const detailsGrid = document.getElementById('extraDetails');
+            const refreshBtn = document.getElementById('refreshBtn');
+
+            // ----- flag mapping (basic) -----
+            const flagMap = {
+                'US': '🇺🇸', 'GB': '🇬🇧', 'CA': '🇨🇦', 'AU': '🇦🇺', 'DE': '🇩🇪',
+                'FR': '🇫🇷', 'JP': '🇯🇵', 'CN': '🇨🇳', 'IN': '🇮🇳', 'BR': '🇧🇷',
+                'RU': '🇷🇺', 'KR': '🇰🇷', 'IT': '🇮🇹', 'ES': '🇪🇸', 'MX': '🇲🇽',
+                'ID': '🇮🇩', 'NL': '🇳🇱', 'SG': '🇸🇬', 'AE': '🇦🇪', 'SA': '🇸🇦',
+                'CH': '🇨🇭', 'SE': '🇸🇪', 'NO': '🇳🇴', 'DK': '🇩🇰', 'FI': '🇫🇮',
+                'PL': '🇵🇱', 'UA': '🇺🇦', 'TH': '🇹🇭', 'VN': '🇻🇳', 'MY': '🇲🇾',
+                'PH': '🇵🇭', 'NZ': '🇳🇿', 'ZA': '🇿🇦', 'NG': '🇳🇬', 'EG': '🇪🇬',
+                'IL': '🇮🇱', 'TR': '🇹🇷', 'PK': '🇵🇰', 'BD': '🇧🇩', 'LK': '🇱🇰'
+            };
+            function getFlag(code) {
+                return flagMap[code] || '🏁';
+            }
+
+            // ----- try multiple free APIs (proxy‑aware first) -----
+            async function fetchIPData() {
+                // list of APIs: prefer those that include proxy/vpn info [citation:3][citation:5][citation:10]
+                const apis = [
+                    {   // ipapi.is – free, no key, includes hosting/ proxy detection [citation:10]
+                        name: 'ipapi.is',
+                        url: 'https://api.ipapi.is/',
+                        parser: (data) => {
+                            const ip = data.ip;
+                            const country = data.location?.country || 'Unknown';
+                            const countryCode = data.location?.country_code || '';
+                            const city = data.location?.city || '';
+                            const region = data.location?.state || '';
+                            // proxy / datacenter / vpn indicators from ipapi.is
+                            const isDatacenter = data.is_datacenter || false;
+                            const isp = data.company?.name || '';
+
+                            // ipapi.is provides `is_proxy`, `is_tor`, `is_vpn`, `is_abuser`, `is_crawler` etc.
+                            const proxy = data.is_proxy || false;
+                            const tor = data.is_tor || false;
+                            const vpn = data.is_vpn || false;
+                            const crawler = data.is_crawler || false;
+                            const datacenter = data.is_datacenter || false;
+
+                            return {
+                                ip, country, countryCode, city, region, isp,
+                                proxy, tor, vpn, crawler, datacenter,
+                                raw: data
+                            };
+                        }
+                    },
+                    {   // ip-api.com – free, no key, returns proxy/hosting fields [citation:1][citation:3]
+                        name: 'ip-api.com',
+                        url: 'http://ip-api.com/json/',
+                        parser: (data) => {
+                            return {
+                                ip: data.query,
+                                country: data.country,
+                                countryCode: data.countryCode,
+                                city: data.city,
+                                region: data.regionName,
+                                isp: data.isp,
+                                org: data.org,
+                                as: data.as,
+                                proxy: data.proxy || false,    // ip-api includes proxy, hosting, mobile
+                                hosting: data.hosting || false,
+                                mobile: data.mobile || false,
+                                tor: false,       // not directly given, but we keep consistent
+                                vpn: data.proxy || false,      // approximate
+                                datacenter: data.hosting || false,
+                                raw: data
+                            };
+                        }
+                    },
+                    {   // ipapi.co – free 1000/day no key [citation:1][citation:10]
+                        name: 'ipapi.co',
+                        url: 'https://ipapi.co/json/',
+                        parser: (data) => {
+                            // ipapi.co has no explicit proxy field, but provides threat info in paid
+                            return {
+                                ip: data.ip,
+                                country: data.country_name,
+                                countryCode: data.country_code,
+                                city: data.city,
+                                region: data.region,
+                                isp: data.org,
+                                proxy: false,     // not available in free
+                                vpn: false,
+                                tor: false,
+                                datacenter: false,
+                                raw: data
+                            };
+                        }
+                    }
+                ];
+
+                for (let api of apis) {
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 4000); // 4s timeout
+                        const response = await fetch(api.url, { signal: controller.signal });
+                        clearTimeout(timeoutId);
+
+                        if (!response.ok) continue;
+
+                        const raw = await response.json();
+                        const parsed = api.parser(raw);
+
+                        // basic validation
+                        if (!parsed.ip) continue;
+
+                        return { success: true, data: parsed, source: api.name };
+                    } catch (e) {
+                        console.log(`API ${api.name} failed:`, e);
+                        // continue to next api
+                    }
+                }
+                return { success: false };
+            }
+
+            function renderBadges(d) {
+                let badges = [];
+                if (d.proxy) badges.push({ type: 'proxy', label: '🔀 PROXY', class: 'proxy-badge' });
+                if (d.vpn) badges.push({ type: 'vpn', label: '🔒 VPN', class: 'vpn-badge' });
+                if (d.tor) badges.push({ type: 'tor', label: '🧅 TOR', class: 'tor-badge' });
+                if (d.datacenter) badges.push({ type: 'dc', label: '🏢 DATACENTER', class: 'proxy-badge' });
+                if (d.crawler) badges.push({ type: 'bot', label: '🤖 CRAWLER', class: 'tor-badge' });
+                if (badges.length === 0) {
+                    badges.push({ type: 'clean', label: '✅ NO PROXY DETECTED', class: 'secure-badge' });
+                }
+                return badges.map(b => `<span class="proxy-tag ${b.class}">${b.label}</span>`).join('');
+            }
+
+            function buildDetailsGrid(d) {
+                // Use ISP, org, ASN, etc.
+                const isp = d.isp || d.org || 'n/a';
+                const asInfo = d.as || d.raw?.asn?.org || '';
+                const timezone = d.raw?.timezone || d.raw?.location?.timezone || '—';
+                const lat = d.raw?.lat ?? d.raw?.latitude ?? d.raw?.location?.latitude ?? '—';
+                const lon = d.raw?.lon ?? d.raw?.longitude ?? d.raw?.location?.longitude ?? '—';
+
+                return `
+                    <div class="detail-item"><span class="detail-label">ISP</span><div class="detail-value">${isp.slice(0,30)}</div></div>
+                    <div class="detail-item"><span class="detail-label">ASN / org</span><div class="detail-value">${asInfo.slice(0,30) || 'n/a'}</div></div>
+                    <div class="detail-item"><span class="detail-label">Timezone</span><div class="detail-value">${timezone}</div></div>
+                    <div class="detail-item"><span class="detail-label">Coordinates</span><div class="detail-value">${lat}, ${lon}</div></div>
+                `;
+            }
+
+            async function refreshDetection() {
+                // show loading
+                loadingDiv.classList.remove('hidden');
+                resultDiv.classList.add('hidden');
+                errorDiv.classList.add('hidden');
+
+                const result = await fetchIPData();
+
+                loadingDiv.classList.add('hidden');
+
+                if (!result.success) {
+                    errorDiv.classList.remove('hidden');
+                    errorDiv.innerHTML = '❌ Could not fetch IP info. Check connection / ad blocker?';
+                    return;
+                }
+
+                const d = result.data;
+
+                // fill basic fields
+                ipEl.textContent = d.ip;
+                countryEl.textContent = d.country || 'Unknown';
+                flagEl.textContent = getFlag(d.countryCode);
+                cityEl.textContent = (d.city && d.city !== '') ? `${d.city} · ${d.region || ''}` : 'Location not precise';
+
+                // badges
+                badgeContainer.innerHTML = renderBadges(d);
+
+                // details grid
+                detailsGrid.innerHTML = buildDetailsGrid(d);
+
+                // extra: show source under the hood
+                const sourceNote = document.createElement('div');
+                sourceNote.style.marginTop = '1.2rem';
+                sourceNote.style.fontSize = '0.7rem';
+                sourceNote.style.color = '#4f6991';
+                sourceNote.style.textAlign = 'center';
+                sourceNote.id = 'source-cache';
+                sourceNote.textContent = `✓ data via ${result.source} (free tier)`;
+                // remove old if exists
+                const oldNote = document.getElementById('source-cache');
+                if (oldNote) oldNote.remove();
+                sourceNote.setAttribute('id', 'source-cache');
+                detailsGrid.insertAdjacentElement('afterend', sourceNote);
+
+                resultDiv.classList.remove('hidden');
+            }
+
+            refreshBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                refreshDetection();
+            });
+
+            // initial load
+            refreshDetection();
+        })();
+    </script>
+</body>
+</html>
