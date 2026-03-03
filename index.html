@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IP Detective - Advanced IP Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        .info-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 25px;
+        }
+
+        .ip-address {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 20px;
+            word-break: break-word;
+        }
+
+        .country-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .flag {
+            font-size: 48px;
+        }
+
+        .country-name {
+            font-weight: 600;
+            color: #555;
+        }
+
+        .city {
+            font-size: 18px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error {
+            color: #dc3545;
+            padding: 20px;
+            background: #f8d7da;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .refresh-btn:hover {
+            background: #5a67d8;
+        }
+
+        .footer {
+            margin-top: 20px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        /* Previous styles remain the same, plus: */
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .detail-item {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .detail-label {
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-value {
+            color: #333;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+
+        .map-container {
+            margin-top: 20px;
+            height: 200px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .api-status {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .api-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .api-fallback {
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔍 IP Detective</h1>
+
+        <div id="content">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Detecting your IP and location...</p>
+                <small style="color: #999;">Trying multiple sources...</small>
+            </div>
+
+            <div id="result" style="display: none;">
+                <div class="info-card">
+                    <div class="ip-address" id="ip"></div>
+                    <div class="country-info">
+                        <span class="flag" id="flag"></span>
+                        <span class="country-name" id="country"></span>
+                    </div>
+                    <div class="city" id="city"></div>
+
+                    <div class="details-grid" id="details"></div>
+
+                    <div id="map" class="map-container">
+                        <!-- Map placeholder -->
+                        <iframe id="map-frame" frameborder="0" style="width:100%;height:100%;" src=""></iframe>
+                    </div>
+                </div>
+
+                <div id="apiInfo" class="api-status"></div>
+
+                <button class="refresh-btn" onclick="detectLocation()">
+                    🔄 Refresh Data
+                </button>
+            </div>
+
+            <div id="error" class="error" style="display: none;"></div>
+        </div>
+
+        <div class="footer">
+            Using multiple IP geolocation APIs for reliability
+        </div>
+    </div>
+
+    <script>
+        async function detectLocation() {
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const error = document.getElementById('error');
+            const apiInfo = document.getElementById('apiInfo');
+
+            loading.style.display = 'flex';
+            result.style.display = 'none';
+            error.style.display = 'none';
+
+            // Try multiple APIs for reliability
+            const apis = [
+                {
+                    name: 'ipapi.co',
+                    url: 'https://ipapi.co/json/',
+                    parser: (data) => ({
+                        ip: data.ip,
+                        country: data.country_name,
+                        countryCode: data.country_code,
+                        city: data.city,
+                        region: data.region,
+                        lat: data.latitude,
+                        lon: data.longitude,
+                        timezone: data.timezone,
+                        org: data.org
+                    })
+                },
+                {
+                    name: 'ip-api.com',
+                    url: 'http://ip-api.com/json/',
+                    parser: (data) => ({
+                        ip: data.query,
+                        country: data.country,
+                        countryCode: data.countryCode,
+                        city: data.city,
+                        region: data.regionName,
+                        lat: data.lat,
+                        lon: data.lon,
+                        timezone: data.timezone,
+                        org: data.isp
+                    })
+                },
+                {
+                    name: 'ipwho.is',
+                    url: 'https://ipwho.is/',
+                    parser: (data) => ({
+                        ip: data.ip,
+                        country: data.country,
+                        countryCode: data.country_code,
+                        city: data.city,
+                        region: data.region,
+                        lat: data.latitude,
+                        lon: data.longitude,
+                        timezone: data.timezone.utc,
+                        org: data.connection.org
+                    })
+                }
+            ];
+
+            for (const api of apis) {
+                try {
+                    const response = await fetch(api.url);
+
+                    if (!response.ok) continue;
+
+                    const rawData = await response.json();
+                    const data = api.parser(rawData);
+
+                    // Update UI with data
+                    document.getElementById('ip').textContent = data.ip;
+                    document.getElementById('country').textContent = data.country;
+                    document.getElementById('city').textContent = data.city ?
+                        `${data.city}, ${data.region}` : 'Location not available';
+
+                    // Add flag emoji (simplified mapping)
+                    const flagEmojis = {
+                        'US': '🇺🇸', 'GB': '🇬🇧', 'CA': '🇨🇦', 'AU': '🇦🇺', 'DE': '🇩🇪',
+                        'FR': '🇫🇷', 'JP': '🇯🇵', 'CN': '🇨🇳', 'IN': '🇮🇳', 'BR': '🇧🇷'
+                    };
+                    document.getElementById('flag').textContent = flagEmojis[data.countryCode] || '🏁';
+
+                    // Add details grid
+                    const details = document.getElementById('details');
+                    details.innerHTML = `
+                        <div class="detail-item">
+                            <div class="detail-label">Country Code</div>
+                            <div class="detail-value">${data.countryCode || 'N/A'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Timezone</div>
+                            <div class="detail-value">${data.timezone || 'N/A'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">ISP/Organization</div>
+                            <div class="detail-value">${data.org || 'N/A'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Coordinates</div>
+                            <div class="detail-value">${data.lat ? `${data.lat}, ${data.lon}` : 'N/A'}</div>
+                        </div>
+                    `;
+
+                    // Add map if coordinates available
+                    if (data.lat && data.lon) {
+                        const mapFrame = document.getElementById('map-frame');
+                        mapFrame.src = `https://www.openstreetmap.org/export/embed.html?bbox=${data.lon - 0.1},${data.lat - 0.1},${data.lon + 0.1},${data.lat + 0.1}&layer=mapnik&marker=${data.lat},${data.lon}`;
+                    }
+
+                    apiInfo.className = 'api-status api-success';
+                    apiInfo.textContent = `✓ Data provided by ${api.name}`;
+
+                    loading.style.display = 'none';
+                    result.style.display = 'block';
+                    return; // Success, exit function
+
+                } catch (err) {
+                    console.log(`${api.name} failed:`, err);
+                    continue; // Try next API
+                }
+            }
+
+            // If all APIs fail
+            loading.style.display = 'none';
+            error.style.display = 'block';
+            error.textContent = 'Unable to detect location. Please check your internet connection and try again.';
+        }
+
+        window.onload = detectLocation;
+    </script>
+</body>
+
+</html>
